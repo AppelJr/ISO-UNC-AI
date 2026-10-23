@@ -1,11 +1,11 @@
 name: Node.js CI
 
 on:
-    branches: [ "main" ]
-pull_request:
-    branches: [ "main" ]
-   
-    build:
+ branches: [ "main" ]
+ pull_request:
+ branches: [ "main" ]
+ 
+ build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
