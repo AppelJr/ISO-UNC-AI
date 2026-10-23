@@ -22,6 +22,7 @@ def _validate(bundle):
     # Tests inject a trust store explicitly; production must load it out of band.
     return validate_bundle(bundle, trusted_keys=bundle["trusted_keys"])
 
+
 MODULES = (
     "core_tests",
     "extended_tests",
