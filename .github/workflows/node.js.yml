@@ -43,16 +43,27 @@ jobs:
           node -e 'const major = Number(process.versions.node.split(".")[0]); if (major < 25) { console.error("NODE_RUNTIME=FAIL"); process.exit(1); } console.log("NODE_RUNTIME=PASS");'
           node -e 'const assert = require("node:assert/strict"); assert.equal(1 + 1, 2); console.log("NODE_SMOKE_TEST=PASS");'
 
-      - name: Validate JavaScript files when present
+      - name: Validate JavaScript source files
         shell: bash
         run: |
           set -Eeuo pipefail
-          mapfile -d '' files < <(find . -path './.git' -prune -o -path './node_modules' -prune -o -type f \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' \) -print0)
-          if (( ${#files[@]} == 0 )); then
-            echo 'JS_SOURCE_CHECK=SKIP (no JavaScript source files found)'
-          else
-            for file in "${files[@]}"; do
-              node --check "$file"
-            done
-            echo "JS_SOURCE_CHECK=PASS files=${#files[@]}"
-          fi
+
+          mapfile -d '' files < <(
+            find . \
+              -path './.git' -prune -o \
+              -path './node_modules' -prune -o \
+              -type f \( \
+                -name '*.js' -o \
+                -name '*.cjs' -o \
+                -name '*.mjs' \
+              \) -print0
+          )
+
+          for file in "${files[@]}"; do
+            if ! node --check "$file"; then
+              echo "JS_SOURCE_CHECK=FAIL file=$file" >&2
+              exit 1
+            fi
+          done
+
+          echo "JS_SOURCE_CHECK=PASS files=${#files[@]}"
