@@ -1,0 +1,6 @@
+cryptography==46.0.3 \
+    --hash=sha256:REPLACE_WITH_LOCKED_HASH
+pytest==8.4.2 \
+    --hash=sha256:REPLACE_WITH_LOCKED_HASH
+PyYAML==6.0.3 \
+    --hash=sha256:REPLACE_WITH_LOCKED_HASH
