@@ -1,3 +1,4 @@
+[![ISO-UNC-AI Validate](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/validate.yml/badge.svg)](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/validate.yml)
 # AI System Validator
 
 ISO-UNC-AI compliant AI system validation suite.
