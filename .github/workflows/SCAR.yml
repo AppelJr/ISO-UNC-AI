@@ -67,6 +67,7 @@ jobs:
           import json
           import os
           import pathlib
+          from datetime import datetime, timezone
 
           def canonical(value):
               return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
@@ -74,7 +75,7 @@ jobs:
           record = {
               "schema": "SCAR-1",
               "record_id": f"{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}",
-              "timestamp": os.environ["GITHUB_RUN_STARTED_AT"] if "GITHUB_RUN_STARTED_AT" in os.environ else None,
+              "timestamp": datetime.now(timezone.utc).isoformat(),
               "who": os.environ.get("GITHUB_ACTOR", "unknown"),
               "what": "repository compliance workflow checks",
               "when": os.environ.get("GITHUB_RUN_ID"),
