@@ -9,8 +9,7 @@ on:
   pull_request:
     branches: [ "main" ]
    
-jobs:
-  build:
+    build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
