@@ -27,8 +27,8 @@ jobs:
       - name: Python compile check
         run: python -m compileall -q .
 
-      - name: Run contract tests
-        run: python -m pytest -q tests/contracts
+      - name: Run full Python test suite
+        run: python -m pytest -q tests
 
       - name: Verify fail-closed rejection path
         run: "! python sys-validator.py tests/fixtures/invalid-bundle.json"
