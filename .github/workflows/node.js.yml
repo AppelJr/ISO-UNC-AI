@@ -2,11 +2,9 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
 name: Node.js CI
-
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
+push:
+branches: [ "main" ]
+pull_request:
     branches: [ "main" ]
    
     build:
