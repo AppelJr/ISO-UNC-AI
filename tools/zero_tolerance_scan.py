@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import fnmatch
 import json
 from pathlib import Path
 
@@ -19,7 +18,7 @@ def main() -> int:
         category = rule["category"]
         patterns = rule.get("patterns", [])
         for path in Path(".").rglob("*"):
-            if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
+            if not path.is_file() or path == POLICY or path.suffix not in TEXT_SUFFIXES:
                 continue
             if any(part in SKIP for part in path.parts):
                 continue
