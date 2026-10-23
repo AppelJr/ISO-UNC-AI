@@ -22,7 +22,9 @@ jobs:
           python-version: "3.14"
 
       - name: Install dependencies
-        run: python -m pip install -r requirements-ci.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ci.txt
 
       - name: Python compile check
         run: python -m compileall -q .
@@ -30,8 +32,34 @@ jobs:
       - name: Run full Python test suite
         run: python -m pytest -q tests
 
-      - name: Verify fail-closed rejection path
-        run: "! python sys-validator.py tests/fixtures/invalid-bundle.json"
+      - name: Verify fail-closed rejection contract
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          result = subprocess.run(
+              [sys.executable, "sys-validator.py", "tests/fixtures/invalid-bundle.json"],
+              capture_output=True,
+              text=True,
+              check=False,
+          )
+          if result.returncode != 1:
+              raise SystemExit(
+                  f"Expected rejection exit code 1, got {result.returncode}; "
+                  f"stderr={result.stderr!r}"
+              )
+          if result.stderr:
+              raise SystemExit(f"Unexpected stderr/traceback: {result.stderr}")
+          try:
+              report = json.loads(result.stdout)
+          except json.JSONDecodeError as exc:
+              raise SystemExit(f"Expected JSON rejection report: {exc}") from exc
+          if report.get("result") != "rejected" or not report.get("reason"):
+              raise SystemExit(f"Expected explicit rejection report, got {report!r}")
+          print("FAIL-CLOSED CONTRACT: PASS")
+          PY
 
       - name: Syntax check JavaScript
         run: node --check validator.js && node --check log-schema.js
