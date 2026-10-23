@@ -17,6 +17,12 @@ _spec.loader.exec_module(_validator)
 ValidationError = _validator.ValidationError
 validate_bundle = _validator.validate_bundle
 
+
+def _validate(bundle):
+    # Tests inject a trust store explicitly; production must load it out of band.
+    return validate_bundle(bundle, trusted_keys=bundle["trusted_keys"])
+
+
 MODULES = (
     "core_tests",
     "extended_tests",
@@ -77,8 +83,14 @@ def _make_bundle():
     }
 
 
+def test_bundle_cannot_supply_its_own_trust_root():
+    bundle = _make_bundle()
+    with pytest.raises(ValidationError, match="external trusted_keys are required"):
+        validate_bundle(bundle)
+
+
 def test_valid_bundle_is_accepted():
-    report = validate_bundle(_make_bundle())
+    report = _validate(_make_bundle())
     assert report["result"] == "validated"
     assert list(report["modules"]) == list(MODULES)
     assert len(report["evidence_chain_digest"]) == 64
@@ -88,7 +100,7 @@ def test_payload_tampering_is_rejected():
     bundle = _make_bundle()
     bundle["evidence"][0]["payload"]["verified"] = False
     with pytest.raises(ValidationError, match="payload hash mismatch"):
-        validate_bundle(bundle)
+        _validate(bundle)
 
 
 def test_signature_tampering_is_rejected():
@@ -98,7 +110,7 @@ def test_signature_tampering_is_rejected():
     raw[0] ^= 1
     bundle["evidence"][0]["signature"]["value"] = base64.b64encode(raw).decode()
     with pytest.raises(ValidationError, match="signature verification failed"):
-        validate_bundle(bundle)
+        _validate(bundle)
 
 
 def test_stale_evidence_is_rejected():
@@ -107,7 +119,7 @@ def test_stale_evidence_is_rejected():
         datetime.now(timezone.utc) - timedelta(days=2)
     ).isoformat()
     with pytest.raises(ValidationError, match="stale"):
-        validate_bundle(bundle)
+        _validate(bundle)
 
 
 def test_future_evidence_is_rejected():
@@ -116,25 +128,25 @@ def test_future_evidence_is_rejected():
         datetime.now(timezone.utc) + timedelta(minutes=10)
     ).isoformat()
     with pytest.raises(ValidationError, match="future"):
-        validate_bundle(bundle)
+        _validate(bundle)
 
 
 def test_missing_required_module_is_rejected():
     bundle = _make_bundle()
     bundle["evidence"].pop()
     with pytest.raises(ValidationError, match="required evidence missing"):
-        validate_bundle(bundle)
+        _validate(bundle)
 
 
 def test_untrusted_signing_key_is_rejected():
     bundle = _make_bundle()
     bundle["evidence"][0]["signature"]["key_id"] = "untrusted"
     with pytest.raises(ValidationError, match="not trusted"):
-        validate_bundle(bundle)
+        _validate(bundle)
 
 
 def test_duplicate_module_evidence_is_rejected():
     bundle = _make_bundle()
     bundle["evidence"].append(dict(bundle["evidence"][0]))
     with pytest.raises(ValidationError, match="duplicate evidence"):
-        validate_bundle(bundle)
+        _validate(bundle)

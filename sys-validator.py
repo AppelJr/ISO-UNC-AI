@@ -15,7 +15,6 @@ import argparse
 import base64
 import hashlib
 import json
-import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -102,7 +101,7 @@ def _verify_evidence(evidence: dict[str, Any], trusted_keys: dict[str, str]) -> 
     timestamp = _parse_time(evidence["timestamp"])
     if (_utc_now() - timestamp).total_seconds() < -MAX_CLOCK_SKEW_SECONDS:
         raise ValidationError("evidence timestamp is from the future")
-    if ( _utc_now() - timestamp).total_seconds() > 86400:
+    if (_utc_now() - timestamp).total_seconds() > 86400:
         raise ValidationError("evidence is stale")
     if _sha256(evidence["payload"]) != evidence["payload_sha256"]:
         raise ValidationError("evidence payload hash mismatch")
@@ -157,18 +156,17 @@ def _validate_module_payload(module: str, payload: dict[str, Any]) -> None:
             raise ValidationError("signature_update_vest: manifest_digest required")
 
 
-def validate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
+def validate_bundle(bundle: dict[str, Any], trusted_keys: dict[str, str] | None = None) -> dict[str, Any]:
     if not isinstance(bundle, dict):
         raise ValidationError("bundle must be an object")
     target = bundle.get("system_under_test")
     evidence = bundle.get("evidence")
-    trusted_keys = bundle.get("trusted_keys")
     if not isinstance(target, str) or not target:
         raise ValidationError("system_under_test is required")
     if not isinstance(evidence, list):
         raise ValidationError("evidence array is required")
     if not isinstance(trusted_keys, dict) or not trusted_keys:
-        raise ValidationError("trusted_keys is required")
+        raise ValidationError("external trusted_keys are required; bundle-provided keys are not trusted")
 
     by_module: dict[str, dict[str, Any]] = {}
     for record in evidence:
@@ -201,23 +199,35 @@ def validate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def validate_file(path: Path) -> dict[str, Any]:
+def validate_file(path: Path, trusted_keys: dict[str, str] | None = None) -> dict[str, Any]:
     try:
         bundle = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValidationError(f"cannot load evidence bundle: {exc}") from exc
-    return validate_bundle(bundle)
+    return validate_bundle(bundle, trusted_keys=trusted_keys)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Fail-closed ISO-UNC-AI evidence validator")
     parser.add_argument("bundle", nargs="?", type=Path, help="JSON evidence bundle")
+    parser.add_argument(
+        "--trusted-keys",
+        type=Path,
+        help="out-of-band JSON trust store mapping key IDs to PEM or base64 Ed25519 public keys",
+    )
     args = parser.parse_args(argv)
     if args.bundle is None:
         print(json.dumps({"result": "rejected", "reason": "evidence bundle required"}, indent=2))
         return 1
+    trusted_keys = None
+    if args.trusted_keys is not None:
+        try:
+            trusted_keys = json.loads(args.trusted_keys.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(json.dumps({"result": "rejected", "reason": f"cannot load external trusted keys: {exc}"}, indent=2))
+            return 1
     try:
-        report = validate_file(args.bundle)
+        report = validate_file(args.bundle, trusted_keys=trusted_keys)
     except ValidationError as exc:
         print(json.dumps({"result": "rejected", "reason": str(exc)}, indent=2))
         return 1

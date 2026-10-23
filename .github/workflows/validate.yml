@@ -2,7 +2,7 @@ name: ISO-UNC-AI Validate
 
 on:
   push:
-    branches: [main]
+    branches: [main, audit/full-compliance-v1]
   pull_request:
     branches: [main]
 
@@ -33,8 +33,40 @@ jobs:
       - name: Run full Python test suite
         run: python -m pytest -q tests
 
-      - name: Verify fail-closed rejection path
-        run: "! python sys-validator.py tests/fixtures/invalid-bundle.json"
+      - name: Lint Python security-critical files
+        run: python -m flake8 --max-line-length=120 sys-validator.py tools/zero_tolerance_scan.py tests/test_sys_validator_security.py
+
+      - name: Check Python static analysis errors
+        run: python -m pylint --errors-only sys-validator.py tools/zero_tolerance_scan.py tests/test_sys_validator_security.py
+
+      - name: Verify fail-closed rejection contract
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          result = subprocess.run(
+              [sys.executable, "sys-validator.py", "tests/fixtures/invalid-bundle.json"],
+              capture_output=True,
+              text=True,
+              check=False,
+          )
+          if result.returncode != 1:
+              raise SystemExit(
+                  f"Expected rejection exit code 1, got {result.returncode}; "
+                  f"stderr={result.stderr!r}"
+              )
+          if result.stderr:
+              raise SystemExit(f"Unexpected stderr/traceback: {result.stderr}")
+          try:
+              report = json.loads(result.stdout)
+          except json.JSONDecodeError as exc:
+              raise SystemExit(f"Expected JSON rejection report: {exc}") from exc
+          if report.get("result") != "rejected" or not report.get("reason"):
+              raise SystemExit(f"Expected explicit rejection report, got {report!r}")
+          print("FAIL-CLOSED CONTRACT: PASS")
+          PY
 
       - name: Syntax check JavaScript
         run: node --check validator.js && node --check log-schema.js
