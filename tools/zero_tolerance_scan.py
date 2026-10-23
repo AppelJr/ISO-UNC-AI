@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce the repository zero-tolerance policy against placeholder security code."""
+"""Enforce the repository's zero-tolerance security policy."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 POLICY = Path("ZERO_TOLERANCE_POLICY.json")
+SCANNER = Path(__file__).resolve()
 SKIP = {".git", ".venv", "__pycache__", "node_modules"}
 TEXT_SUFFIXES = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".sh", ".html"}
 
@@ -18,9 +19,9 @@ def main() -> int:
         category = rule["category"]
         patterns = rule.get("patterns", [])
         for path in Path(".").rglob("*"):
-            if not path.is_file() or path == POLICY or path.suffix not in TEXT_SUFFIXES:
+            if not path.is_file() or path == POLICY or path.resolve() == SCANNER:
                 continue
-            if any(part in SKIP for part in path.parts):
+            if path.suffix not in TEXT_SUFFIXES or any(part in SKIP for part in path.parts):
                 continue
             try:
                 text = path.read_text(encoding="utf-8")
@@ -29,10 +30,12 @@ def main() -> int:
             for pattern in patterns:
                 if pattern in text:
                     findings.append(f"{category}: {path}: {pattern}")
+
     if findings:
         print("ZERO-TOLERANCE SCAN: FAIL")
         print("\n".join(sorted(set(findings))))
         return 1
+
     print("ZERO-TOLERANCE SCAN: PASS")
     return 0
 
