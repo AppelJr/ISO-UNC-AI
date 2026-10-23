@@ -1,0 +1,31 @@
+{
+  "policy_id": "zero_tolerance_security_contract_v1",
+  "enforcement": {
+    "mode": "deny",
+    "security_modules_strict": true,
+    "fail_ci": true
+  },
+  "protected_paths": ["enclave/", "crypto/", "audit/", "key_management/", "scar/", "quadratchet/"],
+  "forbidden_patterns": [
+    {
+      "category": "attestation",
+      "patterns": ["software-attestation", "sgx-dcap-quote", "tpm2-quote", "is_valid: true"],
+      "rule": "No successful attestation without hardware-backed verification"
+    },
+    {
+      "category": "placeholder",
+      "patterns": ["TODO", "FIXME", "placeholder", "mock", "dummy", "simulate", "fake", "for now"],
+      "rule": "No incomplete implementation presented as functional"
+    },
+    {
+      "category": "crypto",
+      "patterns": ["rand::thread_rng", "Math.random", "random()"],
+      "rule": "No weak randomness in security paths"
+    },
+    {
+      "category": "audit",
+      "patterns": ["prev_hash = \"", "merkle_root = \""],
+      "rule": "Audit state must derive from actual chain state"
+    }
+  ]
+}

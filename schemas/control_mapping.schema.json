@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AGIP Control Mapping",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mapping_id", "framework", "function", "control_ref", "object_type", "object_id", "evidence_ref", "status"],
+  "properties": {
+    "mapping_id": {"type": "string"},
+    "framework": {"type": "string", "enum": ["nist_ai_rmf"]},
+    "function": {"type": "string", "enum": ["govern", "map", "measure", "manage"]},
+    "control_ref": {"type": "string"},
+    "object_type": {"type": "string", "enum": ["evidence", "metric", "registry_object", "policy"]},
+    "object_id": {"type": "string"},
+    "evidence_ref": {"type": "string"},
+    "status": {"type": "string", "enum": ["mapped", "verified", "rejected"]},
+    "timestamp": {"type": "string", "format": "date-time"}
+  }
+}
