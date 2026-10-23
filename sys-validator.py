@@ -15,7 +15,6 @@ import argparse
 import base64
 import hashlib
 import json
-import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -102,7 +101,7 @@ def _verify_evidence(evidence: dict[str, Any], trusted_keys: dict[str, str]) -> 
     timestamp = _parse_time(evidence["timestamp"])
     if (_utc_now() - timestamp).total_seconds() < -MAX_CLOCK_SKEW_SECONDS:
         raise ValidationError("evidence timestamp is from the future")
-    if ( _utc_now() - timestamp).total_seconds() > 86400:
+    if (_utc_now() - timestamp).total_seconds() > 86400:
         raise ValidationError("evidence is stale")
     if _sha256(evidence["payload"]) != evidence["payload_sha256"]:
         raise ValidationError("evidence payload hash mismatch")
@@ -211,7 +210,11 @@ def validate_file(path: Path, trusted_keys: dict[str, str] | None = None) -> dic
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Fail-closed ISO-UNC-AI evidence validator")
     parser.add_argument("bundle", nargs="?", type=Path, help="JSON evidence bundle")
-    parser.add_argument("--trusted-keys", type=Path, help="out-of-band JSON trust store mapping key IDs to PEM or base64 Ed25519 public keys")
+    parser.add_argument(
+        "--trusted-keys",
+        type=Path,
+        help="out-of-band JSON trust store mapping key IDs to PEM or base64 Ed25519 public keys",
+    )
     args = parser.parse_args(argv)
     if args.bundle is None:
         print(json.dumps({"result": "rejected", "reason": "evidence bundle required"}, indent=2))
