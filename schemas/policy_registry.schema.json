@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AGIP Policy Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["policy_id", "name", "scope", "framework_refs", "enforcement"],
+  "properties": {
+    "policy_id": {"type": "string"},
+    "name": {"type": "string"},
+    "scope": {"type": "string", "enum": ["organization", "business_unit", "application", "model", "vendor"]},
+    "framework_refs": {"type": "array", "items": {"type": "string"}},
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "requires_evidence"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "requires_evidence": {"type": "boolean"},
+        "requires_approval": {"type": "boolean"}
+      }
+    }
+  }
+}
