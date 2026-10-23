@@ -1,0 +1,15 @@
+ai-system-validator/
+├── LICENSE
+├── README.md
+├── SECURITY.md
+├── SYSTEM_VALIDATOR.md
+├── docs/
+│   └── design.md
+├── src/
+│   ├── js/
+│   │   └── validator.js
+│   └── python/
+│       └── aisystem_validator.py
+└── templates/
+    ├── vendor_disclosure_template.md
+    └── evidence_manifest_template.txt

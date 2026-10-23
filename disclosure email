@@ -1,0 +1,11 @@
+To: product-security@apple.com
+Subject: Potential iOS/Cloud chain — evidence manifest (hashes only)
+
+Hello Apple Product Security,
+
+I observed unusual behavior affecting an iPhone XS Max (iOS 18.x) and iCloud-synced content that may indicate a multi-stage chain involving cloud processing. I have prepared an evidence manifest (attached) with SHA256 hashes. Please advise a secure channel (PGP or SFTP) if you need the encrypted artifacts.
+
+Manifest: audit-manifest.json (SHA256: <insert hash>)
+
+Thank you,
+[Derek Appel] — [PGP fingerprint]

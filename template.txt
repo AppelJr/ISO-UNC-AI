@@ -1,0 +1,12 @@
+Evidence manifest
+=================
+Collector: [Your name]
+Collected on (UTC): [YYYY-MM-DDTHH:MM:SSZ]
+
+Files:
+- file1.pcap  SHA256: <hash>  size: 123456
+- device_console.ips SHA256: <hash> size: 98765
+
+Notes:
+- No plaintext secrets included.
+- All files hashed with SHA256. Encrypted archive available on request.

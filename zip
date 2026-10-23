@@ -1,0 +1,328 @@
+# Creating the ai-system-validator repo scaffold and zipping it for download.
+import os, json, textwrap, shutil, zipfile, pathlib
+
+root = "/mnt/data/ai-system-validator"
+if os.path.exists(root):
+    shutil.rmtree(root)
+os.makedirs(root)
+
+# Files content from assistant response
+files = {
+    "README.md": textwrap.dedent("""\
+    # AI System Validator
+
+    A safe, read-only reference framework for validating AI system integrations, compliance posture, and suspicious artifacts.  
+    Purpose: provide a standardized, non-destructive validator that helps security teams collect evidence, run passive checks, and produce reports for vendor coordination and disclosure.
+
+    **Important:** This project intentionally avoids any destructive functionality (no kill switches, quarantines that delete data, or remote shutdown code). It is intended for defensive use only.
+
+    ## Features
+    - Read-only validators for configuration, policy, and artifact scanning (JS & Python examples).
+    - Ethics-rule engine for scoring requested actions (non-enforcing; advisory).
+    - Evidence manifest template and responsible disclosure guidance.
+    - Logging/audit stubs (write-only to local logs for forensics) — no automatic network shutdowns.
+
+    ## Getting started (developer)
+    Clone the repo and inspect `src/python/` or `src/js/`.
+
+    ### Python (example)
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt   # (none required by default)
+    python src/python/aisystem_validator.py --help
+    ```
+
+    ### Node.js (example)
+    ```bash
+    npm install
+    node src/js/validator.js --help
+    ```
+
+    ## Usage guidance
+    1. Use this tool in **isolation** on a clean machine.  
+    2. Do **not** provide production credentials or secret keys to the tool.  
+    3. Use the templates in `templates/` when preparing vendor reports. Only attach hashed evidence unless a vendor requests raw data via encrypted channel.
+
+    ## Security & Responsible Disclosure
+    See `SECURITY.md` for instructions on how to report issues and how to share evidence securely.
+
+    ## Contributing
+    Contributions are welcome. Please open an issue or PR. For vulnerability reports, follow `SECURITY.md`.
+
+    ## License
+    MIT. See `LICENSE`.
+    """),
+    "LICENSE": textwrap.dedent("""\
+    MIT License
+
+    Copyright (c) 2025 Appel420
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+    """),
+    "SECURITY.md": textwrap.dedent("""\
+    # Security & Responsible Disclosure
+
+    If you discover a security vulnerability in this project or in systems you are investigating, please follow these guidelines.
+
+    ## Do not run destructive actions
+    This repository intentionally contains **no destructive controls**. Do not attempt to use any code to remotely shutdown, disrupt, or otherwise modify third-party services.
+
+    ## Reporting a vulnerability
+    1. Prepare reproducible evidence (pcaps, logs, file hashes). Do **not** include plaintext tokens, passwords, or private keys.
+    2. Hash sensitive files (SHA256) and include only the hash in the initial report. Vendors will ask for encrypted artifacts if needed.
+    3. Contact the affected vendor/PSIRT and include:
+       - Short summary
+       - Impacted components and timestamps (UTC)
+       - SHA256 of artifacts
+       - Suggested coordination channel (PGP key or SFTP)
+    4. If the vendor does not respond within a reasonable timeframe, consider contacting national CERT (e.g., CISA) or law enforcement, but consult legal counsel before public disclosure.
+
+    ## Contact
+    - Primary: security@yourdomain.example (replace with your secure contact)
+    - For GitHub-specific issues: open a private issue or use GitHub’s security advisory flow.
+    """),
+    "SYSTEM_VALIDATOR.md": textwrap.dedent("""\
+    # AI System Validator — Design
+
+    ## Goals
+    - Provide passive validation: configuration checks, audit logging, pattern detection.
+    - Avoid any capability to modify remote services or remove access tokens.
+    - Provide clear guidance and templates for secure, coordinated disclosure.
+
+    ## Core components
+    - Scanner (pattern matching): checks filenames, file hashes, and suspicious strings.
+    - Ethics advisory engine: assigns non-binding scores to actions (advisory only).
+    - Evidence manifest generator: bundles SHA256 checksums and descriptions for vendor submission.
+    - Logging: local JSONL audit logs; no auto-forwarding to external networks.
+
+    ## Example flows
+    - Collect evidence -> generate manifest (hashes only) -> contact vendor PSIRT -> provide encrypted artifacts over vendor-provided channel if requested.
+    """),
+    "docs/design.md": textwrap.dedent("""\
+    # Design Notes
+
+    This project is a reference implementation for safe collection and validation of AI-related security artifacts.
+    It is intentionally conservative: read-only analysis, manifest generation, and vendor-friendly templates.
+    """),
+    "src/js/validator.js": textwrap.dedent("""\
+    /**
+     * ai-system-validator: minimal, read-only JS validator
+     * - This file intentionally contains NO destructive code.
+     * - Use only for offline analysis and evidence collection.
+     */
+
+    const fs = require('fs');
+    const crypto = require('crypto');
+
+    function sha256File(path) {
+      const buf = fs.readFileSync(path);
+      return crypto.createHash('sha256').update(buf).digest('hex');
+    }
+
+    function scanFileForPatterns(path, patterns) {
+      const content = fs.readFileSync(path, 'utf8');
+      const matches = [];
+      for (const p of patterns) {
+        if (p.test(content)) matches.push(p.toString());
+      }
+      return matches;
+    }
+
+    function generateManifest(files) {
+      return files.map(f => ({
+        path: f,
+        sha256: sha256File(f),
+        size: fs.statSync(f).size
+      }));
+    }
+
+    async function main() {
+      // Example usage: node src/js/validator.js /path/to/suspect1.txt
+      const files = process.argv.slice(2);
+      if (files.length === 0) {
+        console.log('Usage: node validator.js <file1> [file2 ...]');
+        process.exit(1);
+      }
+
+      const patterns = [/pickle/i, /exec\\(/i, /base64/i, /rce/i];
+      const manifest = generateManifest(files);
+      console.log('MANIFEST:', JSON.stringify(manifest, null, 2));
+
+      for (const f of files) {
+        const matches = scanFileForPatterns(f, patterns);
+        if (matches.length) {
+          console.log(`WARN: suspicious patterns in ${f}:`, matches);
+        } else {
+          console.log(`${f}: no suspicious patterns detected (by simple heuristics).`);
+        }
+      }
+
+      // Write local audit log (read-only style)
+      const audit = {
+        timestamp: new Date().toISOString(),
+        manifest
+      };
+      fs.writeFileSync('audit-manifest.json', JSON.stringify(audit, null, 2), { flag: 'w' });
+      console.log('Wrote audit-manifest.json (do not include secrets).');
+    }
+
+    main().catch(e => { console.error('ERROR', e); process.exit(2); });
+    """),
+    "src/python/aisystem_validator.py": textwrap.dedent("""\
+    #!/usr/bin/env python3
+    \"\"\"
+    Minimal read-only Python validator for artifacts.
+    No destructive or network shutdown logic included.
+    \"\"\"
+
+    import argparse, hashlib, json, os, re, sys
+
+    PATTERNS = [re.compile(r'pickle', re.I), re.compile(r'os\\.system', re.I), re.compile(r'rce', re.I)]
+
+    def sha256_file(path):
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                h.update(chunk)
+        return h.hexdigest()
+
+    def scan_file(path):
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        hits = [p.pattern for p in PATTERNS if p.search(content)]
+        return hits
+
+    def generate_manifest(files):
+        entries = []
+        for p in files:
+            entries.append({
+                'path': p,
+                'sha256': sha256_file(p),
+                'size': os.path.getsize(p),
+                'suspicious_patterns': scan_file(p)
+            })
+        return entries
+
+    def main():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('files', nargs='+', help='files to analyze (local paths only)')
+        args = parser.parse_args()
+        manifest = generate_manifest(args.files)
+        print(json.dumps(manifest, indent=2))
+        with open('audit-manifest.json', 'w') as f:
+            json.dump({'timestamp': __import__('datetime').datetime.utcnow().isoformat(), 'manifest': manifest}, f, indent=2)
+        print('Wrote audit-manifest.json')
+
+    if __name__ == '__main__':
+        main()
+    """),
+    "templates/vendor_disclosure_template.md": textwrap.dedent("""\
+    Subject: Coordinated Disclosure: Potential iOS/baseband / AI-integration chain — evidence hashed
+
+    Hello [Vendor PSIRT],
+
+    My name is [Full name], I am reporting a potential security issue that appears to affect [component(s): e.g., iCloud sync + iOS device(s) / Google Cloud pipeline]. I have collected artifacts and follow a responsible disclosure process.
+
+    Summary:
+    - Short summary (1–2 lines) of observed behavior and affected devices (model / OS / carrier).
+    - Dates/time (UTC) when observed.
+    - Impact (what you observed, e.g., suspicious traffic, automatic re-deployments).
+
+    Evidence (hashed):
+    - manifest: audit-manifest.json (SHA256: <insert SHA256>)
+    - pcap: example.pcap.sha256 = <hash>
+    - logs: example.log.sha256 = <hash>
+
+    Request:
+    - Please advise the secure channel for transmitting the encrypted artifacts (PGP key, or vendor SFTP). I will not transmit raw artifacts until a secure channel is arranged.
+    - If you have an assigned ticket ID, please provide it for tracking.
+
+    Contact:
+    [Name]
+    [Encrypted email / PGP fingerprint]
+    [Phone (optional)]
+
+    Thank you for your assistance.
+
+    -- end
+    """),
+    "templates/evidence_manifest_template.txt": textwrap.dedent("""\
+    Evidence manifest
+    =================
+    Collector: [Your name]
+    Collected on (UTC): [YYYY-MM-DDTHH:MM:SSZ]
+
+    Files:
+    - file1.pcap  SHA256: <hash>  size: 123456
+    - device_console.ips SHA256: <hash> size: 98765
+
+    Notes:
+    - No plaintext secrets included.
+    - All files hashed with SHA256. Encrypted archive available on request.
+    """),
+    "templates/short_disclosure_email.txt": textwrap.dedent("""\
+    To: product-security@apple.com
+    Subject: Potential iOS/Cloud chain — evidence manifest (hashes only)
+
+    Hello Apple Product Security,
+
+    I observed unusual behavior affecting an iPhone XS Max (iOS 18.x) and iCloud-synced content that may indicate a multi-stage chain involving cloud processing. I have prepared an evidence manifest (attached) with SHA256 hashes. Please advise a secure channel (PGP or SFTP) if you need the encrypted artifacts.
+
+    Manifest: audit-manifest.json (SHA256: <insert hash>)
+
+    Thank you,
+    [Name] — [PGP fingerprint]
+    """)
+}
+
+# create directories and files
+for path, content in files.items():
+    full_path = os.path.join(root, path)
+    dirpath = os.path.dirname(full_path)
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
+    with open(full_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+# create zip
+zip_path = "/mnt/data/ai-system-validator.zip"
+if os.path.exists(zip_path):
+    os.remove(zip_path)
+
+with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+    for base, _, filenames in os.walk(root):
+        for fn in filenames:
+            fp = os.path.join(base, fn)
+            arcname = os.path.relpath(fp, start=root)
+            zf.write(fp, arcname)
+
+zip_size = os.path.getsize(zip_path)
+print(f"Created zip: {zip_path} ({zip_size} bytes)")
+
+# list files for user
+file_list = []
+for base, _, filenames in os.walk(root):
+    for fn in filenames:
+        file_list.append(os.path.relpath(os.path.join(base, fn), start=root))
+
+{"zip_path": zip_path, "files": file_list, "size_bytes": zip_size}
