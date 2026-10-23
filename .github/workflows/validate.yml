@@ -39,5 +39,5 @@ jobs:
       - name: Validate YAML logic
         run: python -c "import yaml; yaml.safe_load(open('validator_logic.yaml', encoding='utf-8'))"
 
-      - name: Scan prohibited placeholder/security patterns
+      - name: Run repository security policy scan
         run: python tools/zero_tolerance_scan.py
