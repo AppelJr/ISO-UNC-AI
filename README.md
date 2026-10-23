@@ -1,4 +1,4 @@
-[![ISO-UNC-AI Validate](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/validate.yml/badge.svg)](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/validate.yml)
+[![ISO-UNC-AI Validate](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/validate.yml/badge.svg)](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/validate.yml) [![Python package](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/python-package.yml/badge.svg)](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/python-package.yml) [![Pylint](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/pylint.yml/badge.svg)](https://github.com/AppelJr/ISO-UNC-AI/actions/workflows/pylint.yml) 
 # AI System Validator
 
 ISO-UNC-AI compliant AI system validation suite.
