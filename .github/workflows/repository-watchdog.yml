@@ -34,6 +34,15 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Set up Node.js 25
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '25'
+          check-latest: true
+
+      - name: Install pinned YAML validator
+        run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
+
       - name: Verify runner and Node.js runtime contract
         shell: bash
         run: |
@@ -44,16 +53,12 @@ jobs:
           echo "WATCHDOG_RUN_ID=${GITHUB_RUN_ID}"
           echo "FULL_SHA=${SHA}"
           echo 'RUNNER_CONTRACT=PASS'
-          if command -v node >/dev/null 2>&1; then
-            NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
-            if (( NODE_MAJOR < 25 )); then
-              echo "NODE_RUNTIME=FAIL expected >=25, got $(node --version)" >&2
-              exit 1
-            fi
-            echo "NODE_RUNTIME=PASS $(node --version)"
-          else
-            echo 'NODE_RUNTIME=SKIP no Node.js project/runtime declared'
+          NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+          if (( NODE_MAJOR < 25 )); then
+            echo "NODE_RUNTIME=FAIL expected >=25, got $(node --version)" >&2
+            exit 1
           fi
+          echo "NODE_RUNTIME=PASS $(node --version)"
 
       - name: Verify workflow files and required runner declarations
         shell: bash
