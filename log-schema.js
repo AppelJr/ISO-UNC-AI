@@ -1,49 +1,26 @@
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AI System Validator Audit Manifest Schema",
-  "type": "object",
-  "required": ["timestamp", "manifest"],
-  "properties": {
-    "timestamp": {
-      "type": "string",
-      "format": "date-time",
-      "description": "UTC timestamp when manifest was generated"
+/**
+ * ISO-UNC-AI Validator Log Schema
+ * Structured output for all validation runs.
+ */
+
+const LogSchema = {
+  version: "1.0",
+  fields: {
+    timestamp: "ISO-8601 UTC",
+    run_id: "UUID",
+    operator: "string",
+    system_under_test: "string",
+    modules: {
+      core_tests: "pass | fail | skipped",
+      extended_tests: "pass | fail | skipped",
+      hardware_attestation: "pass | fail | skipped",
+      threat_feed: "pass | fail | skipped",
+      signature_update_vest: "pass | fail | skipped"
     },
-    "host": {
-      "type": "string",
-      "description": "Hostname or identifier of analysis machine (optional)"
-    },
-    "collector": {
-      "type": "string",
-      "description": "Name of the person or system that collected artifacts"
-    },
-    "manifest": {
-      "type": "array",
-      "description": "List of artifact entries",
-      "items": {
-        "type": "object",
-        "required": ["path", "sha256", "size"],
-        "properties": {
-          "path": { "type": "string", "description": "Relative path or filename" },
-          "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
-          "size": { "type": "integer", "minimum": 0 },
-          "suspicious_patterns": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of pattern names or regex strings matched"
-          },
-          "notes": { "type": "string" }
-        }
-      }
-    },
-    "summary": {
-      "type": "object",
-      "properties": {
-        "total_artifacts": { "type": "integer" },
-        "suspicious_count": { "type": "integer" },
-        "max_score": { "type": "number" },
-        "min_score": { "type": "number" }
-      }
-    }
+    result: "validated | rejected | pending_review",
+    evidence_hash: "SHA-256 hex",
+    artifacts: ["string"]
   }
-}
+};
+
+module.exports = LogSchema;

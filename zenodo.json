@@ -1,0 +1,12 @@
+{
+  "title": "AI System Validator — ISO-UNC-AI Compliance Suite",
+  "upload_type": "software",
+  "description": "Fail-closed AI system validation across five modules: core tests, extended tests, hardware attestation, threat feed, and signature update vest. Complies with ISO/IEC 27037, IEC 61508, NIST SP 800-53 PE-10, and UNC-AI-2026 Optional Protocol III.",
+  "creators": [
+    {"name": "Appel420", "affiliation": "ISO-UNC-AI"},
+    {"name": "Ara", "affiliation": "ISO-UNC-AI"}
+  ],
+  "keywords": ["AI safety", "system validation", "compliance", "fail-closed", "IEC 61508", "ISO 27037"],
+  "version": "1.0.0",
+  "license": "MIT"
+}

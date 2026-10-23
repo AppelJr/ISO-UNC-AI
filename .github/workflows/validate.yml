@@ -1,0 +1,27 @@
+name: ISO-UNC-AI Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run system validator
+        run: python sys-validator.py
+
+      - name: Syntax check JavaScript
+        run: node --check validator.js && node --check log-schema.js
+
+      - name: Validate YAML logic
+        run: python -c "import yaml; yaml.safe_load(open('validator_logic.yaml'))"
