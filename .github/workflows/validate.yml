@@ -2,7 +2,7 @@ name: ISO-UNC-AI Validate
 
 on:
   push:
-    branches: [main]
+    branches: [main, audit/full-compliance-v1]
   pull_request:
     branches: [main]
 
@@ -31,6 +31,12 @@ jobs:
 
       - name: Run full Python test suite
         run: python -m pytest -q tests
+
+      - name: Lint Python security-critical files
+        run: python -m flake8 --max-line-length=120 sys-validator.py tools/zero_tolerance_scan.py tests/test_sys_validator_security.py
+
+      - name: Check Python static analysis errors
+        run: python -m pylint --errors-only sys-validator.py tools/zero_tolerance_scan.py tests/test_sys_validator_security.py
 
       - name: Verify fail-closed rejection contract
         run: |
