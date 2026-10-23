@@ -31,7 +31,7 @@ jobs:
         run: python -m pytest -q tests/contracts
 
       - name: Verify fail-closed rejection path
-        run: python sys-validator.py tests/fixtures/invalid-bundle.json
+        run: "! python sys-validator.py tests/fixtures/invalid-bundle.json"
 
       - name: Syntax check JavaScript
         run: node --check validator.js && node --check log-schema.js
