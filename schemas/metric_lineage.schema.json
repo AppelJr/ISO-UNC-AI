@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AGIP Metric Lineage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metric_id", "value", "derived_from", "framework_refs", "evidence_chain"],
+  "properties": {
+    "metric_id": {"type": "string"},
+    "value": {"type": ["number", "integer"]},
+    "derived_from": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "framework_refs": {"type": "array", "items": {"type": "string"}},
+    "evidence_chain": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "calculation_method": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "verification_status": {"type": "string", "enum": ["verified", "pending", "rejected"]}
+  }
+}

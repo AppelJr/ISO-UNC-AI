@@ -1,0 +1,71 @@
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node-ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Node.js 25 runtime and syntax checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.2.2
+        with:
+          node-version: '25.x'
+          check-latest: true
+          package-manager-cache: false
+
+      - name: Verify Node.js runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --version
+          npm --version
+          node -e 'const major = Number(process.versions.node.split(".")[0]); if (major < 25) { console.error("NODE_RUNTIME=FAIL"); process.exit(1); } console.log("NODE_RUNTIME=PASS");'
+          node -e 'const assert = require("node:assert/strict"); assert.equal(1 + 1, 2); console.log("NODE_SMOKE_TEST=PASS");'
+
+      - name: Validate JavaScript source files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          mapfile -d '' files < <(
+            find . \
+              -path './.git' -prune -o \
+              -path './node_modules' -prune -o \
+              -type f \( \
+                -name '*.js' -o \
+                -name '*.cjs' -o \
+                -name '*.mjs' \
+              \) -print0
+          )
+
+          (("${#files[@]}" > 0)) || { echo 'JS_SOURCE_CHECK=FAIL no JavaScript source files found' >&2; exit 1; }
+
+          for file in "${files[@]}"; do
+            if ! node --check "$file"; then
+              echo "JS_SOURCE_CHECK=FAIL file=$file" >&2
+              exit 1
+            fi
+          done
+
+          echo "JS_SOURCE_CHECK=PASS files=${#files[@]}"

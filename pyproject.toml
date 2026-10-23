@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agip-core"
+version = "0.1.0"
+description = "Evidence-first AI governance intelligence platform"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.0",
+  "cryptography>=42.0",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pylint>=3.0"]
+
+[tool.setuptools.packages.find]
+include = ["agip_core*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

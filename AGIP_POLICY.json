@@ -1,0 +1,11 @@
+{
+  "required_invariants": [
+    "registry_requires_evidence",
+    "evidence_must_be_verified",
+    "collector_cannot_write_registry",
+    "framework_alignment_requires_control_mapping",
+    "metrics_require_alignment_chain",
+    "metrics_require_evidence_lineage",
+    "unverified_metrics_cannot_publish"
+  ]
+}

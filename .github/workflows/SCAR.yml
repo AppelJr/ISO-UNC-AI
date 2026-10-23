@@ -1,0 +1,131 @@
+name: SCAR — Sovereign Compliance Audit Record
+
+on:
+  push:
+    branches:
+      - main
+      - '**'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Reason for this SCAR attestation run
+        required: false
+        default: manual-attest
+      force_key_rotation:
+        description: Explicit compromise only; does not rotate keys automatically
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: scar-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scar-contract:
+    name: SCAR — Independent Compliance Attestation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14'
+
+      - name: SCAR source gate and verifier self-test
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f scripts/scar_pqc_attest.py || { echo 'SCAR_SOURCE_GATE=FAIL missing verifier' >&2; exit 1; }
+          python -m py_compile scripts/scar_pqc_attest.py
+          python scripts/scar_pqc_attest.py --self-test
+          echo 'SCAR_SOURCE_GATE=PASS'
+
+      - name: Generate this run's SCAR evidence record
+        id: scar
+        shell: bash
+        env:
+          SCAR_REASON: ${{ inputs.reason || 'push-attest' }}
+          SCAR_ROTATION_REQUESTED: ${{ inputs.force_key_rotation || 'false' }}
+        run: |
+          set -Eeuo pipefail
+          OUT="${RUNNER_TEMP}/scar"
+          mkdir -p "$OUT"
+          export SCAR_OUTPUT_DIR="$OUT"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          from datetime import datetime, timezone
+
+          def canonical(value):
+              return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+          record = {
+              "schema": "SCAR-1",
+              "record_id": f"{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}",
+              "timestamp": datetime.now(timezone.utc).isoformat(),
+              "who": os.environ.get("GITHUB_ACTOR", "unknown"),
+              "what": "repository compliance workflow checks",
+              "when": os.environ.get("GITHUB_RUN_ID"),
+              "where": os.environ.get("GITHUB_REPOSITORY"),
+              "why": os.environ.get("SCAR_REASON", "push-attest"),
+              "how": "GitHub Actions; source compile, verifier self-test, generated record hash verification",
+              "authorization": "workflow_dispatch or repository push event; no key rotation performed",
+              "memory_loaded": False,
+              "network_accessed": True,
+              "files_changed": [],
+              "result": "pass",
+              "commit": os.environ["GITHUB_SHA"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "event": os.environ["GITHUB_EVENT_NAME"],
+              "key_rotation_requested": os.environ.get("SCAR_ROTATION_REQUESTED", "false"),
+              "hash_prev": None,
+          }
+          record["record_hash"] = hashlib.sha256(canonical(record)).hexdigest()
+          output = pathlib.Path(os.environ["SCAR_OUTPUT_DIR"]) / "000001.json"
+          output.write_text(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n", encoding="utf-8")
+          print(f"SCAR_RECORD_CREATED={output.name}")
+          PY
+          echo "SCAR_OUTPUT_DIR=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Verify generated SCAR record
+        shell: bash
+        env:
+          SCAR_OUTPUT_DIR: ${{ steps.scar.outputs.SCAR_OUTPUT_DIR }}
+        run: |
+          set -Eeuo pipefail
+          python scripts/scar_pqc_attest.py --directory "$SCAR_OUTPUT_DIR"
+
+      - name: Upload SCAR evidence artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: scar-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.scar.outputs.SCAR_OUTPUT_DIR }}/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record attestation scope
+        shell: bash
+        env:
+          SCAR_ROTATION_REQUESTED: ${{ inputs.force_key_rotation || 'false' }}
+        run: |
+          set -Eeuo pipefail
+          printf 'SCAR_RESULT=PASS\n'
+          printf 'SCAR_COMMIT=%s\n' "${GITHUB_SHA}"
+          printf 'SCAR_RUN_ID=%s\n' "${GITHUB_RUN_ID}"
+          printf 'SCAR_EVENT=%s\n' "${GITHUB_EVENT_NAME}"
+          printf 'SCAR_KEY_ROTATION_REQUESTED=%s\n' "${SCAR_ROTATION_REQUESTED}"
+          echo 'SCAR_SCOPE=canonical record hash and chain validation; not PQC signature, hardware attestation, or immutable-storage proof'
