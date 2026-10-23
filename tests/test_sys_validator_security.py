@@ -2,13 +2,20 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib.util
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from sys_validator import validate_bundle, ValidationError
+_spec = importlib.util.spec_from_file_location("sys_validator", Path("sys-validator.py"))
+assert _spec is not None and _spec.loader is not None
+_validator = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_validator)
+ValidationError = _validator.ValidationError
+validate_bundle = _validator.validate_bundle
 
 MODULES = (
     "core_tests",
