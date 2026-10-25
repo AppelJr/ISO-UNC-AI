@@ -1,8 +1,8 @@
-name: ISO-UNC-AI Validate
+name: ISO-UNC-AI/Validate.yml
 
 on:
   push:
-    branches: [main, audit/full-compliance-v1]
+    branches: [main]
   pull_request:
     branches: [main]
 
