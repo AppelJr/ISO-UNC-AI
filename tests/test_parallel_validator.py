@@ -1,4 +1,4 @@
-from parallel_validator import validate_parallel_evidence
+from integration.parallel_validator import validate_parallel_evidence
 
 
 def test_unbound_validator_blocks():
