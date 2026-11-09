@@ -1,0 +1,49 @@
+{
+  "schema_version": "sovereignty.chain-of-command.consumer.v1",
+  "repository": "AppelJr/ISO-UNC-AI",
+  "integration_role": "compliance_validation",
+  "contract_owner": "AppelJr/Sovereignty-AI-Studio_v1.0.1",
+  "canonical_implementation_ref": "agent/chain-of-command-heavy-judge-20261107",
+  "consumer_branch": "agent/chain-of-command-consumer-20261107",
+  "integration_status": "DECLARED",
+  "test_status": "NOT_RUN",
+  "contract_summary": "Compliance control validation",
+  "responsibility": "Maps Gate, Heavy Judge, dual-gate and audit evidence to compliance controls. Validation reports are evidence, not runtime authorization.",
+  "inbound_contract": {
+    "required_fields": [
+      "request_id",
+      "task_id",
+      "owner_id",
+      "device_id",
+      "scope",
+      "policy_hash",
+      "route_id"
+    ],
+    "authorization": "verified Sovereignty Gate proof required before protected work"
+  },
+  "outbound_contract": {
+    "permitted_fields": [
+      "judge_verdict_id",
+      "output_hash",
+      "signature_ref",
+      "scar_event_id",
+      "repmhl_record_id",
+      "status"
+    ],
+    "release_rule": "PASS only; YANK means escrow and output withheld; REWRITE requires full revalidation"
+  },
+  "invariants": [
+    "Orchestrator is not authority",
+    "Council votes are not authorization",
+    "Voice is not identity",
+    "No component may bypass the pre-route Gate or post-judge release Gate",
+    "SCAR/REPMHL evidence failure blocks release",
+    "No secrets or raw credentials in audit events"
+  ],
+  "evidence": {
+    "source_repository_root_inspected": true,
+    "adapter_implemented": false,
+    "cross_repository_test_executed": false,
+    "note": "This declaration records the repository's integration boundary; it does not claim executable wiring."
+  }
+}
