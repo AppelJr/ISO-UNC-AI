@@ -161,8 +161,12 @@ class DurableSCARLedger:
         self.signer = signer
 
     def _read_and_verify(self) -> tuple[int, str]:
+        if self.path.is_symlink():
+            raise SCARLedgerError("SCAR ledger must not be a symlink")
         if not self.path.exists():
             return 0, GENESIS_EVENT_HASH
+        if not self.path.is_file():
+            raise SCARLedgerError("SCAR ledger path must be a regular file")
         previous = GENESIS_EVENT_HASH
         count = 0
         try:
