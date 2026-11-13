@@ -67,7 +67,8 @@ python tools/offline_tool_dispatcher.py \\
   --verify
 \`\`\`
 
-Verification checks sequence, identity, predecessor links, canonical event
+Verification uses the independently provisioned public key, not the private
+signing key. It checks sequence, identity, predecessor links, canonical event
 hashes, and Ed25519 signatures. This is a local signer-backed ledger; it does
 not by itself prove hardware-backed key custody, remote timestamping, PQC
 attestation, or immutable storage.
