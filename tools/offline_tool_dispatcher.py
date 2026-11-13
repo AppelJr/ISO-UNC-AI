@@ -69,9 +69,10 @@ def sha256_hex(payload: bytes) -> str:
 
 @dataclass(frozen=True)
 class Ed25519RootOfTrust:
-    """Local Ed25519 signer; key material is never read from a tool request."""
+    """Ed25519 signer/verifier. Verification may use an independently provisioned public key."""
 
-    private_key: Any
+    private_key: Any | None = None
+    public_key: Any | None = None
 
     @classmethod
     def from_file(cls, path: pathlib.Path) -> "Ed25519RootOfTrust":
@@ -87,20 +88,43 @@ class Ed25519RootOfTrust:
             if len(raw) != 32:
                 raise SCARLedgerError("Ed25519 private key must be exactly 32 raw bytes")
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-            return cls(Ed25519PrivateKey.from_private_bytes(raw))
+            private = Ed25519PrivateKey.from_private_bytes(raw)
+            return cls(private_key=private, public_key=private.public_key())
         except OSError as exc:
             raise SCARLedgerError(f"cannot load signing key: {exc}") from exc
 
+    @classmethod
+    def from_public_file(cls, path: pathlib.Path) -> "Ed25519RootOfTrust":
+        try:
+            if path.is_symlink():
+                raise SCARLedgerError("verification key must not be a symlink")
+            info = path.stat()
+            if not stat.S_ISREG(info.st_mode):
+                raise SCARLedgerError("verification key must be a regular file")
+            raw = path.read_bytes()
+            if len(raw) != 32:
+                raise SCARLedgerError("Ed25519 public key must be exactly 32 raw bytes")
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+            return cls(public_key=Ed25519PublicKey.from_public_bytes(raw))
+        except OSError as exc:
+            raise SCARLedgerError(f"cannot load verification key: {exc}") from exc
+
     def sign(self, payload: bytes) -> bytes:
+        if self.private_key is None:
+            raise SCARLedgerError("private signing key is unavailable")
         return self.private_key.sign(payload)
 
     def verify(self, payload: bytes, signature: bytes) -> None:
         try:
-            self.private_key.public_key().verify(signature, payload)
+            if self.public_key is None:
+                raise SCARLedgerError("public verification key is unavailable")
+            self.public_key.verify(signature, payload)
         except Exception as exc:
             raise SCARLedgerError("SCAR signature verification failed") from exc
 
     def write_public_key(self, path: pathlib.Path) -> None:
+        if self.private_key is None:
+            raise SCARLedgerError("private signing key is unavailable")
         from cryptography.hazmat.primitives import serialization
         raw = self.private_key.public_key().public_bytes(
             encoding=serialization.Encoding.Raw,
@@ -184,8 +208,10 @@ class DurableSCARLedger:
 
     def append(self, event_type: str, metadata: Mapping[str, Any]) -> dict[str, Any]:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.path.is_symlink():
+            raise SCARLedgerError("SCAR ledger must not be a symlink")
         flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
-        fd = os.open(self.path, flags, 0o600)
+        fd = os.open(self.path, flags | getattr(os, "O_NOFOLLOW", 0), 0o600)
         try:
             with os.fdopen(fd, "ab") as stream:
                 fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
@@ -376,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--audit-log", type=pathlib.Path, default=pathlib.Path("var/scar/offline-tools.jsonl"))
     parser.add_argument("--identity-id", default="local-device")
     parser.add_argument("--signing-key", type=pathlib.Path)
+    parser.add_argument("--verification-key", type=pathlib.Path)
     parser.add_argument("--generate-key", type=pathlib.Path, metavar="PRIVATE_KEY")
     parser.add_argument("--public-key", type=pathlib.Path)
     parser.add_argument("--verify", action="store_true", help="verify the existing signed SCAR chain")
@@ -388,14 +415,18 @@ def main(argv: list[str] | None = None) -> int:
             generate_signing_key(args.generate_key, args.public_key)
             print(json.dumps({"status": "success", "private_key": str(args.generate_key), "public_key": str(args.public_key)}))
             return 0
+        if args.verify:
+            if not args.verification_key:
+                raise DispatcherError("--verification-key is required for independent chain verification")
+            verifier = Ed25519RootOfTrust.from_public_file(args.verification_key)
+            ledger = DurableSCARLedger(args.audit_log, args.identity_id, verifier)
+            valid, count, final_hash = ledger.verify_chain()
+            print(json.dumps({"status": "success", "chain": "PASS", "records": count, "final_hash": final_hash}))
+            return 0
         if not args.signing_key:
             raise DispatcherError("--signing-key is required; unsigned execution is prohibited")
         signer = Ed25519RootOfTrust.from_file(args.signing_key)
         ledger = DurableSCARLedger(args.audit_log, args.identity_id, signer)
-        if args.verify:
-            valid, count, final_hash = ledger.verify_chain()
-            print(json.dumps({"status": "success", "chain": "PASS", "records": count, "final_hash": final_hash}))
-            return 0
         request = load_request(sys.stdin)
         response = execute_tool_call(request, ledger=ledger)
         print(json.dumps(response, ensure_ascii=False, indent=2))
