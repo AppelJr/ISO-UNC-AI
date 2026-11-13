@@ -74,6 +74,12 @@ class Ed25519RootOfTrust:
     private_key: Any | None = None
     public_key: Any | None = None
 
+    def __post_init__(self) -> None:
+        # A signer created from a private key must also be able to verify its
+        # own ledger records. Public-only instances remain verification-only.
+        if self.private_key is not None and self.public_key is None:
+            object.__setattr__(self, "public_key", self.private_key.public_key())
+
     @classmethod
     def from_file(cls, path: pathlib.Path) -> "Ed25519RootOfTrust":
         try:
@@ -268,8 +274,7 @@ def execute_tool_call(
     timestamp = utc_timestamp()
     if not isinstance(request, dict):
         raise DispatcherError("request must be a JSON object")
-    if set(request) - {"tool", "args", "request_id"}:
-        raise DispatcherError("request contains unsupported fields")
+    unsupported_fields = set(request) - {"tool", "args", "request_id"}
 
     tool_name = request.get("tool")
     args = request.get("args", [])
@@ -285,7 +290,9 @@ def execute_tool_call(
     stdout = ""
     stderr = ""
     tool_policy = TOOLS.get(tool_name) if isinstance(tool_name, str) else None
-    if tool_policy is None:
+    if unsupported_fields:
+        reason = "request contains unsupported fields"
+    elif tool_policy is None:
         reason = "tool is not allowlisted"
     elif not isinstance(args, list) or not all(isinstance(arg, str) for arg in args):
         reason = "args must be a list of strings"
