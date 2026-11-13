@@ -39,7 +39,7 @@ def test_unknown_tool_is_denied_and_audited(ledger):
 
 
 @pytest.mark.parametrize(
-    "request",
+    "tool_request",
     [
         {"tool": "echo", "args": "not-a-list"},
         {"tool": "echo", "args": [1]},
@@ -49,8 +49,8 @@ def test_unknown_tool_is_denied_and_audited(ledger):
         {"tool": "echo", "args": [], "executable": "/bin/sh"},
     ],
 )
-def test_malformed_or_unsafe_requests_are_denied_and_audited(ledger, request):
-    result = execute_tool_call(request, ledger=ledger)
+def test_malformed_or_unsafe_requests_are_denied_and_audited(ledger, tool_request):
+    result = execute_tool_call(tool_request, ledger=ledger)
     assert result["status"] == "denied"
     assert ledger.verify_chain()[1] == 1
 
